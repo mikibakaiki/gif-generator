@@ -20,8 +20,19 @@ def _ensure_streamlit_launch_mode():
     if get_script_run_ctx() is not None:
         return
 
-    subprocess.run([sys.executable, "-m", "streamlit", "run", __file__], check=False)
-    raise SystemExit(0)
+    child = subprocess.Popen([sys.executable, "-m", "streamlit", "run", __file__])
+    try:
+        child.wait()
+    except KeyboardInterrupt:
+        if child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
+        raise SystemExit(130)
+    raise SystemExit(child.returncode if child.returncode is not None else 0)
 
 
 _ensure_streamlit_launch_mode()

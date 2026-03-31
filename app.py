@@ -139,7 +139,9 @@ def download_and_convert(url, start_time, end_time):
         'format': 'best',
         'outtmpl': video_path,
         'download_ranges': yt_dlp.utils.download_range_func(None, [(start_time, end_time)]),
-        'force_keyframes_at_cuts': True
+        'force_keyframes_at_cuts': True,
+        'extractor_args': {'youtube': {'player_client': ['web']}},
+        'js_runtimes': ['nodejs']
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:

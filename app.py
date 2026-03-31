@@ -48,6 +48,33 @@ st.markdown(
     .st-key-back_button [data-testid="stButton"] > button {
         width: auto;
     }
+
+    @media (max-width: 768px) {
+        .st-key-preview_summary [data-testid="stHorizontalBlock"],
+        .st-key-preview_actions [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap;
+            gap: 0.5rem;
+        }
+
+        .st-key-preview_summary [data-testid="stColumn"],
+        .st-key-preview_actions [data-testid="stColumn"] {
+            min-width: 0;
+            flex: 1 1 0;
+        }
+
+        .st-key-preview_summary [data-testid="stMetricValue"] {
+            font-size: 2rem;
+        }
+
+        .st-key-preview_actions [data-testid="stButton"] > button {
+            width: 100%;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -324,10 +351,11 @@ if st.session_state.mode == "preview":
 
     video_id = _extract_video_id(url)
     if video_id:
-        summary_col1, summary_col2, summary_col3 = st.columns(3)
-        summary_col1.metric("Start", f"{int(start_time)}s")
-        summary_col2.metric("End", f"{int(end_time)}s")
-        summary_col3.metric("Duration", f"{int(end_time - start_time)}s")
+        with st.container(key="preview_summary"):
+            summary_col1, summary_col2, summary_col3 = st.columns(3)
+            summary_col1.metric("Start", f"{int(start_time)}s")
+            summary_col2.metric("End", f"{int(end_time)}s")
+            summary_col3.metric("Duration", f"{int(end_time - start_time)}s")
 
         embed_url = (
             f"https://www.youtube.com/embed/{video_id}?start={int(start_time)}"
@@ -337,17 +365,18 @@ if st.session_state.mode == "preview":
     else:
         st.error("The saved URL is not valid. Go back and update it.")
 
-    action_cols = st.columns(3, vertical_alignment="center")
-    back_clicked = False
-    generate_clicked = False
+    with st.container(key="preview_actions"):
+        action_cols = st.columns(3, vertical_alignment="center")
+        back_clicked = False
+        generate_clicked = False
 
-    with action_cols[0]:
-        with st.container(key="back_button"): 
-            back_clicked = st.button("Back to Edit")
+        with action_cols[0]:
+            with st.container(key="back_button"):
+                back_clicked = st.button("Back to Edit")
 
-    with action_cols[2]:
-        with st.container(key="upload_data"):
-            generate_clicked = st.button("Generate GIFs", disabled=video_id is None)
+        with action_cols[2]:
+            with st.container(key="upload_data"):
+                generate_clicked = st.button("Generate GIFs", disabled=video_id is None)
 
     if back_clicked:
         st.session_state.mode = "editing"

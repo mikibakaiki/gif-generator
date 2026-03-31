@@ -1,0 +1,5 @@
+moviepy
+python-dotenv
+requests
+streamlit
+yt-dlp

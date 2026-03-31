@@ -132,6 +132,9 @@ if "mode" not in st.session_state:
 if "cookies_browser" not in st.session_state:
     st.session_state.cookies_browser = ""
 
+if "cookies_file_path" not in st.session_state:
+    st.session_state.cookies_file_path = None
+
 
 st.title("YouTube to GIF Converter")
 st.caption("Turn any YouTube moment into a shareable GIF in four quick steps.")
@@ -231,6 +234,20 @@ def _download_video_with_fallback(url, video_path):
         },
     ]
 
+    # Try with uploaded cookies first (for cloud deployments like Streamlit)
+    cookies_file_path = st.session_state.get("cookies_file_path")
+    if cookies_file_path and os.path.exists(cookies_file_path):
+        attempts.insert(
+            0,
+            {
+                **common_opts,
+                "format": "bestvideo*+bestaudio/best",
+                "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+                "cookiesfile": cookies_file_path,
+            },
+        )
+
+    # Try with browser cookies (for local deployments)
     cookies_from_browser = _get_cookies_from_browser_value()
     if cookies_from_browser:
         attempts.insert(
@@ -256,13 +273,13 @@ def _download_video_with_fallback(url, video_path):
     if _looks_like_auth_required_error(cleaned_error):
         raise RuntimeError(
             "This video appears to require sign-in (age-restricted/private/members-only). "
-            "Open 'Advanced: Authentication (optional)', choose your browser, and try again. "
+            "Open 'Advanced: Authentication (optional)', choose your browser or upload cookies, and try again. "
             f"Last yt-dlp error: {cleaned_error}"
         )
 
     raise RuntimeError(
         "Could not download this YouTube video with available formats. "
-        "If this continues, use 'Advanced: Authentication (optional)' and retry. "
+        "If this continues, try using 'Advanced: Authentication (optional)' with your browser or uploaded cookies. "
         f"Last yt-dlp error: {cleaned_error}"
     )
 
@@ -337,9 +354,36 @@ if st.session_state.mode == "editing":
             "Browser cookie source",
             auth_options,
             index=default_index,
-            help="Used as yt-dlp --cookies-from-browser.",
+            help="Used as yt-dlp --cookies-from-browser. Only works on local deployments with access to your browser.",
         )
         st.session_state.cookies_browser = "" if selected_auth == "None" else selected_auth
+
+        st.divider()
+        
+        st.caption("**For cloud deployments (Streamlit Cloud, Vercel, etc.):**")
+        uploaded_file = st.file_uploader(
+            "Upload YouTube cookies file (JSON format)",
+            type=["json", "txt"],
+            help="Export cookies from your browser using an extension like EditThisCookie or Get cookies.txt, "
+                 "then upload the file here. This allows downloading restricted videos on cloud deployments.",
+        )
+        if uploaded_file is not None:
+            import json
+            temp_cookies_path = os.path.join(tempfile.gettempdir(), f"cookies_{id(uploaded_file)}.json")
+            try:
+                # Try to parse as JSON first
+                cookies_content = uploaded_file.read().decode("utf-8")
+                json.loads(cookies_content)  # Validate JSON
+                with open(temp_cookies_path, "w") as f:
+                    f.write(cookies_content)
+                st.session_state.cookies_file_path = temp_cookies_path
+                st.success("✓ Cookies file uploaded successfully")
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                st.error("Invalid cookies file format. Please upload a valid JSON file.")
+                st.session_state.cookies_file_path = None
+        elif st.session_state.get("cookies_file_path"):
+            st.info("Current cookies file is loaded. Upload a new file to replace it.")
+
 
     col1, col2 = st.columns(2)
     with col1:

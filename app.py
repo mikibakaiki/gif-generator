@@ -50,14 +50,12 @@ st.markdown(
     }
 
     @media (max-width: 768px) {
-        .st-key-preview_summary [data-testid="stHorizontalBlock"],
-        .st-key-preview_actions [data-testid="stHorizontalBlock"] {
+        .st-key-preview_summary [data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap;
             gap: 0.5rem;
         }
 
-        .st-key-preview_summary [data-testid="stColumn"],
-        .st-key-preview_actions [data-testid="stColumn"] {
+        .st-key-preview_summary [data-testid="stColumn"] {
             min-width: 0;
             flex: 1 1 0;
         }
@@ -66,10 +64,45 @@ st.markdown(
             font-size: 2rem;
         }
 
+        .st-key-editing_actions [data-testid="stHorizontalBlock"],
+        .st-key-preview_actions [data-testid="stHorizontalBlock"],
+        .st-key-retry_actions [data-testid="stHorizontalBlock"],
+        .st-key-result_missing_actions [data-testid="stHorizontalBlock"],
+        .st-key-result_downloads [data-testid="stHorizontalBlock"],
+        .st-key-result_final_actions [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .st-key-editing_actions [data-testid="stColumn"],
+        .st-key-preview_actions [data-testid="stColumn"],
+        .st-key-retry_actions [data-testid="stColumn"],
+        .st-key-result_missing_actions [data-testid="stColumn"],
+        .st-key-result_downloads [data-testid="stColumn"],
+        .st-key-result_final_actions [data-testid="stColumn"] {
+            min-width: 0;
+            flex: 1 1 100%;
+        }
+
+        .st-key-editing_actions [data-testid="stButton"] > button,
         .st-key-preview_actions [data-testid="stButton"] > button {
             width: 100%;
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
+            min-height: 44px;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .st-key-retry_actions [data-testid="stButton"] > button,
+        .st-key-result_missing_actions [data-testid="stButton"] > button,
+        .st-key-result_final_actions [data-testid="stButton"] > button,
+        .st-key-result_downloads [data-testid="stDownloadButton"] > button {
+            width: 100%;
+            min-height: 44px;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -328,7 +361,8 @@ if st.session_state.mode == "editing":
     else:
         st.info(f"Clip duration: {duration} seconds")
 
-    preview_clicked = st.button("Preview Clip", disabled=not can_proceed)
+    with st.container(key="editing_actions"):
+        preview_clicked = st.button("Preview Clip", disabled=not can_proceed)
 
     if preview_clicked:
         if not can_proceed:
@@ -366,7 +400,7 @@ if st.session_state.mode == "preview":
         st.error("The saved URL is not valid. Go back and update it.")
 
     with st.container(key="preview_actions"):
-        action_cols = st.columns(3, vertical_alignment="center")
+        action_cols = st.columns(2, vertical_alignment="center")
         back_clicked = False
         generate_clicked = False
 
@@ -374,7 +408,7 @@ if st.session_state.mode == "preview":
             with st.container(key="back_button"):
                 back_clicked = st.button("Back to Edit")
 
-        with action_cols[2]:
+        with action_cols[1]:
             with st.container(key="upload_data"):
                 generate_clicked = st.button("Generate GIFs", disabled=video_id is None)
 
@@ -406,16 +440,17 @@ if st.session_state.mode == "processing":
         except Exception as exc:
             st.error("GIF generation failed for this selection.")
             st.caption(str(exc))
-            retry_col1, retry_col2 = st.columns(2)
-            with retry_col1:
-                if st.button("Back to Preview"):
-                    st.session_state.mode = "preview"
-                    st.rerun()
-            with retry_col2:
-                if st.button("Start Over"):
-                    _reset_workflow_state(clear_outputs=True)
-                    st.session_state.mode = "editing"
-                    st.rerun()
+            with st.container(key="retry_actions"):
+                retry_col1, retry_col2 = st.columns(2)
+                with retry_col1:
+                    if st.button("Back to Preview"):
+                        st.session_state.mode = "preview"
+                        st.rerun()
+                with retry_col2:
+                    if st.button("Start Over"):
+                        _reset_workflow_state(clear_outputs=True)
+                        st.session_state.mode = "editing"
+                        st.rerun()
 
 
 # --- Result Mode ---
@@ -454,44 +489,47 @@ if st.session_state.mode == "result":
 
     if not standard_bytes or not high_res_bytes:
         st.error("Your GIF files are missing or could not be loaded. Please generate again.")
-        if st.button("Back to Edit"):
-            _reset_workflow_state(clear_outputs=True)
-            st.session_state.mode = "editing"
-            st.rerun()
+        with st.container(key="result_missing_actions"):
+            if st.button("Back to Edit"):
+                _reset_workflow_state(clear_outputs=True)
+                st.session_state.mode = "editing"
+                st.rerun()
     else:
         st.image(standard_bytes, caption="Preview (standard GIF)")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="Download Standard GIF",
-                data=standard_bytes,
-                file_name="standard.gif",
-                mime="image/gif",
-            )
+        with st.container(key="result_downloads"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="Download GIF",
+                    data=standard_bytes,
+                    file_name="standard.gif",
+                    mime="image/gif",
+                )
 
-        with col2:
-            st.download_button(
-                label="Download High-Resolution GIF",
-                data=high_res_bytes,
-                file_name="high_res.gif",
-                mime="image/gif",
-            )
+            with col2:
+                st.download_button(
+                    label="Download HD GIF",
+                    data=high_res_bytes,
+                    file_name="high_res.gif",
+                    mime="image/gif",
+                )
 
-        with st.expander("Optional: Upload to Imgur", expanded=False):
-            st.info(
-                "Uploading to Imgur creates a public link. Make sure you are okay with public visibility."
-            )
-            if st.button("Upload Standard GIF to Imgur"):
-                with st.spinner("Uploading..."):
-                    link, error = upload_to_imgur(standard_bytes)
-                    if link:
-                        st.success(f"Upload complete: {link}")
-                        st.markdown(f"[Open in Imgur]({link})")
-                    else:
-                        st.error(error)
+        with st.container(key="result_final_actions"):
+            with st.expander("Optional: Upload to Imgur", expanded=False):
+                st.info(
+                    "Uploading to Imgur creates a public link. Make sure you are okay with public visibility."
+                )
+                if st.button("Upload to Imgur"):
+                    with st.spinner("Uploading..."):
+                        link, error = upload_to_imgur(standard_bytes)
+                        if link:
+                            st.success(f"Upload complete: {link}")
+                            st.markdown(f"[Open in Imgur]({link})")
+                        else:
+                            st.error(error)
 
-    if st.button("Create Another GIF"):
-        _reset_workflow_state(clear_outputs=True)
-        st.session_state.mode = "editing"
-        st.rerun()
+            if st.button("Make Another GIF"):
+                _reset_workflow_state(clear_outputs=True)
+                st.session_state.mode = "editing"
+                st.rerun()
